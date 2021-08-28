@@ -17,6 +17,32 @@ public class PlebTest extends LinearOpMode {
 
     @Override
     public void runOpMode() throws InterruptedException {
+        //encoder values
+        //left is fLeft
+        //right is fRight
+        //back is bLeft
+
+        double leftEncoder = 0;
+        double leftEncoderChange = 0;
+        double rightEncoder = 0;
+        double rightEncoderChange = 0;
+        double backEncoder = 0;
+        double backEncoderChange = 0;
+
+        //encoder change when turning in positive angle direction
+        //right up, left down
+        double angle = 0;
+        double angleChange = 0;
+        double ticksPerTurn = 90000; //sum of encoders for 360 turn
+        //position in encoder ticks
+        double xPos = 0;
+        double yPos = 0;
+
+        double currentYChange;
+        //inches
+        double mecanumOffset = 4.631;
+
+
         fLeft = hardwareMap.dcMotor.get("fLeft");
         fRight = hardwareMap.dcMotor.get("fRight");
         bLeft = hardwareMap.dcMotor.get("bLeft");
@@ -40,15 +66,7 @@ public class PlebTest extends LinearOpMode {
         waitForStart();
 
         while (opModeIsActive()) {
-            //encoder values
-            //left is fLeft
-            //right is fRight
-            //back is bLeft
-
-            double leftEncoder = 0;
-            double rightEncoder = 0;
-            double backEncoder = 0;
-
+            //GAME-PAD CONTROLLING ROBOT
             //forward on the joystick is negative
             double power = -gamepad1.left_stick_y;
             double steer = gamepad1.right_stick_x;
@@ -67,12 +85,34 @@ public class PlebTest extends LinearOpMode {
             bLeft.setPower(bLeftPower/scale);
             bRight.setPower(bRightPower/scale);
 
+            //ODOMETRY LOCALIZATION
+            leftEncoderChange = fLeft.getCurrentPosition() - leftEncoder;
+            rightEncoderChange = fRight.getCurrentPosition() - rightEncoder;
+            backEncoderChange = bLeft.getCurrentPosition() - backEncoder;
+            leftEncoder = fLeft.getCurrentPosition();
+            rightEncoder = fRight.getCurrentPosition();
+            backEncoder = bLeft.getCurrentPosition();
+
+            angleChange = 2.2 * Math.PI * (rightEncoderChange - leftEncoderChange)/ticksPerTurn;
+            angle += angleChange;
+            double xDis = -(leftEncoderChange + rightEncoderChange)/2;
+            double yDis = backEncoderChange - (angleChange * mecanumOffset);
+            xPos += (xDis * Math.sin(angle)) + (yDis * Math.cos(angle));
+            yPos += (xDis * Math.cos(angle)) - (yDis * Math.sin(angle));
+
+            //TELEMETRY
             telemetry.addData("Time", SystemClock.elapsedRealtime());
+
             telemetry.addData("gamepad1 right stick y", gamepad1.left_stick_y);
+
             telemetry.addData("fLeft encoder", fLeft.getCurrentPosition());
-            telemetry.addData("bLeft encoder", bLeft.getCurrentPosition());
             telemetry.addData("fRight encoder", fRight.getCurrentPosition());
             telemetry.addData("bRight encoder", bRight.getCurrentPosition());
+
+            //the position is in inches
+            telemetry.addData("x position", 12*xPos/11550);
+            telemetry.addData("y position", 12*yPos/11550);
+            telemetry.addData("angle", 180*angle/Math.PI);
             telemetry.update();
         }
     }
